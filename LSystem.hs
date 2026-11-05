@@ -169,12 +169,12 @@ position (Turtle p _) = p
 -- Remember that cos and sin expect radians.
 
 forward :: Turtle -> Turtle
-forward = undefined
+forward (Turtle (x, y) heading) = Turtle (x + cos a, y + sin a) heading where a = heading * pi / 180
 
 -- Turn anticlockwise by the given number of degrees.
 
 turn :: Double -> Turtle -> Turtle
-turn = undefined
+turn d (Turtle (x, y) heading) = Turtle (x, y) (heading + d)
 
 -- Run a program: return where the turtle ends up, and every line it
 -- drew, in the order it drew them.  A Branch does not move the
@@ -182,12 +182,17 @@ turn = undefined
 -- branch.
 
 run :: Turtle -> [Instr] -> (Turtle, [Line])
-run = undefined
+run turtle (x:xs) = case x of
+  Draw -> (newTurtle, (position turtle, position newTurtle) : lines) where (newTurtle, lines) = run (forward turtle) xs
+  Move -> (newTurtle, lines) where (newTurtle, lines) = run (forward turtle) xs
+  Turn d -> (newTurtle, lines) where (newTurtle, lines) = run (turn d turtle) xs
+  Branch i -> (newTurtle, branchlines ++ lines) where (branchTurtle, branchlines) = run turtle i; (newTurtle, lines) = run turtle xs
 
+run turtle [] = (turtle, [])
 -- All the lines drawn by a program, starting from start.
 
 draw :: [Instr] -> [Line]
-draw = undefined
+draw i = lines where (_, lines) = run start i
 
 -- ------------------------------------------------------------
 -- Part 4: SVG output
