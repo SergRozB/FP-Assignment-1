@@ -51,23 +51,30 @@ data LSystem = LSystem
 --   rewrite [('a', "ab")] 'z'  ==  "z"
 
 rewrite :: Eq a => Rules a -> a -> [a]
-rewrite = undefined
+rewrite rules x = case lookup x rules of
+  Just ys -> ys
+  Nothing -> [x]
 
 -- One generation: rewrite every symbol, all at the same time.
 --   step [('A', "AB"), ('B', "A")] "ABA"  ==  "ABAAB"
 
 step :: Eq a => Rules a -> [a] -> [a]
-step = undefined
+step [] a = a
+step _ [] = []
+step rules (x:xs) = rewrite rules x ++ step rules xs 
 
 -- The (infinite!) list of all generations, starting with the axiom.
 
 generations :: Eq a => Rules a -> [a] -> [[a]]
-generations = undefined
+generations [] a = a : generations [] a
+generations rules [] = [] : generations rules []
+generations rules xs = iterate (step rules) xs
+-- generations rules xs = xs : generations rules (step rules xs) -- should work too?
 
 -- Generation n of an L-system.  (expand ls 0 is the axiom.)
 
 expand :: LSystem -> Int -> String
-expand = undefined
+expand system gen = (generations (rules system) (axiom system))!!gen 
 
 -- ------------------------------------------------------------
 -- Part 2: Turtle programs
