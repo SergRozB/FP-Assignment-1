@@ -192,7 +192,7 @@ run turtle [] = (turtle, [])
 -- All the lines drawn by a program, starting from start.
 
 draw :: [Instr] -> [Line]
-draw i = lines where (_, lines) = run start i
+draw i = lines where (_, lines) = run start 
 
 -- ------------------------------------------------------------
 -- Part 4: SVG output
@@ -210,7 +210,11 @@ num x = printf "%.2f" (fromIntegral (round (x * 100) :: Integer) / 100 :: Double
 --   bounds [((0,0),(1,2)), ((-1,5),(3,1))]  ==  ((-1,0),(3,5))
 
 bounds :: [Line] -> (Point, Point)
-bounds = undefined
+bounds ls = ((xa, ya), (xb, yb)) where
+  xa = min (minimum [x | ((x, _), _) <- ls], minimum [x | (_, (x, _)) <- ls])
+  ya = min (minimum [y | ((_, y), _) <- ls], minimum [y | (_, (_, y)) <- ls])
+  xb = max (maximum [x | ((x, _), _) <- ls], maximum [x | (_, (x, _)) <- ls])
+  yb = max (maximum [y | ((_, y), _) <- ls], maximum [y | (_, (_, y)) <- ls])
 
 -- SVG's y-axis points DOWN the page, so we flip every point upside
 -- down when we write it out:  (x, y)  is written as  "x -y".
@@ -218,7 +222,7 @@ bounds = undefined
 --   svgPoint (1.5, 2)  ==  "1.50 -2.00"
 
 svgPoint :: Point -> String
-svgPoint = undefined
+svgPoint (x, y) = num x ++ " " ++ num (negate y)
 
 -- The drawing commands for an SVG path.  Each line (p, q) becomes
 -- "M p L q" ("move to p, then draw a line to q"), and the commands
@@ -228,7 +232,10 @@ svgPoint = undefined
 --     ==  "M 0.00 0.00 L 1.00 0.00 M 1.00 0.00 L 1.00 -1.00"
 
 svgPath :: [Line] -> String
-svgPath = undefined
+svgPath [] = ""
+svgPath ((p,q):xs) = case xs of
+  [] -> "M " ++ (svgPoint p) ++ " L " ++ (svgPoint q)
+  (y:ys) -> "M " ++ (svgPoint p) ++ " L " ++ (svgPoint q) ++ " " ++ svgPath xs
 
 -- A complete SVG file.  It should look like this, with one path
 -- containing all the lines (how you lay out the spaces and line
@@ -249,12 +256,19 @@ svgPath = undefined
 --   pad = max 1 (0.05 * max width height)
 
 toSVG :: [Line] -> String
-toSVG = undefined
+toSVG ls = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"800\" viewBox=\"" ++ num X ++ " " ++ num Y ++ " " ++ num W ++ " " ++ num H ++ "\"> <path fill=\"none\" stroke=\"black\" stroke-width=\"1.5\" vector-effect=\"non-scaling-stroke\" d=\"" ++ svgPath ls ++ "\"/> </svg>" where 
+X = (px - pad)
+Y = (-qy - pad) 
+W = (qx - px + 2 * pad)
+H = (qy - py + 2 * pad)
+((px, py),(qx, qy)) = bounds ls 
+pad = max 1 (0.05 * max W H)
+toSVG [] = ""
 
 -- Put it all together: the SVG picture of generation n.
 
 render :: LSystem -> Int -> String
-render = undefined
+render system order = expand system order (.) parse angle system (.) draw (.) toSVG
 
 -- ------------------------------------------------------------
 -- The gallery (provided)
