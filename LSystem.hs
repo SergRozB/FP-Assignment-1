@@ -13,8 +13,8 @@
 --
 --    | Name                     | Student ID |
 --    |--------------------------|------------|
---    |                          |            |
---    |                          |            |
+--    |David Goodhall            |2916930     |
+--    |Sergio Rozalen-Breton     |2921690     |
 --    |                          |            |
 -- ============================================================
 
@@ -228,7 +228,9 @@ turn d (Turtle (x, y) heading) = Turtle (x, y) (heading + d)
 
 run :: Turtle -> [Instr] -> (Turtle, [Line])
 run turtle (x:xs) = case x of
-  Draw -> (newTurtle, (position turtle, position newTurtle) : lines) where (newTurtle, lines) = run (forward turtle) xs
+  Draw -> (finalTurtle, (position turtle, position nextTurtle) : lines) where 
+    nextTurtle = forward turtle 
+    (finalTurtle, lines) = run nextTurtle xs
   Move -> (newTurtle, lines) where (newTurtle, lines) = run (forward turtle) xs
   Turn d -> (newTurtle, lines) where (newTurtle, lines) = run (turn d turtle) xs
   Branch i -> (newTurtle, branchlines ++ lines) where (branchTurtle, branchlines) = run turtle i; (newTurtle, lines) = run turtle xs
@@ -237,7 +239,7 @@ run turtle [] = (turtle, [])
 -- All the lines drawn by a program, starting from start.
 
 draw :: [Instr] -> [Line]
-draw i = lines where (_, lines) = run start 
+draw i = lines where (_, lines) = run start i
 
 -- ------------------------------------------------------------
 -- Part 4: SVG output
@@ -256,10 +258,10 @@ num x = printf "%.2f" (fromIntegral (round (x * 100) :: Integer) / 100 :: Double
 
 bounds :: [Line] -> (Point, Point)
 bounds ls = ((xa, ya), (xb, yb)) where
-  xa = min (minimum [x | ((x, _), _) <- ls], minimum [x | (_, (x, _)) <- ls])
-  ya = min (minimum [y | ((_, y), _) <- ls], minimum [y | (_, (_, y)) <- ls])
-  xb = max (maximum [x | ((x, _), _) <- ls], maximum [x | (_, (x, _)) <- ls])
-  yb = max (maximum [y | ((_, y), _) <- ls], maximum [y | (_, (_, y)) <- ls])
+  xa = min (minimum [x | ((x, _), _) <- ls]) (minimum [x | (_, (x, _)) <- ls])
+  ya = min (minimum [y | ((_, y), _) <- ls]) (minimum [y | (_, (_, y)) <- ls])
+  xb = max (maximum [x | ((x, _), _) <- ls]) (maximum [x | (_, (x, _)) <- ls])
+  yb = max (maximum [y | ((_, y), _) <- ls]) (maximum [y | (_, (_, y)) <- ls])
 
 -- SVG's y-axis points DOWN the page, so we flip every point upside
 -- down when we write it out:  (x, y)  is written as  "x -y".
@@ -301,19 +303,20 @@ svgPath ((p,q):xs) = case xs of
 --   pad = max 1 (0.05 * max width height)
 
 toSVG :: [Line] -> String
-toSVG ls = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"800\" viewBox=\"" ++ num X ++ " " ++ num Y ++ " " ++ num W ++ " " ++ num H ++ "\"> <path fill=\"none\" stroke=\"black\" stroke-width=\"1.5\" vector-effect=\"non-scaling-stroke\" d=\"" ++ svgPath ls ++ "\"/> </svg>" where 
-X = (px - pad)
-Y = (-qy - pad) 
-W = (qx - px + 2 * pad)
-H = (qy - py + 2 * pad)
-((px, py),(qx, qy)) = bounds ls 
-pad = max 1 (0.05 * max W H)
-toSVG [] = ""
+toSVG ls = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"800\" viewBox=\"" ++ num x ++ " " ++ num y ++ " " ++ num w ++ " " ++ num h ++ "\"> <path fill=\"none\" stroke=\"black\" stroke-width=\"1.5\" vector-effect=\"non-scaling-stroke\" d=\"" ++ svgPath ls ++ "\"/> </svg>" where 
+  x = (px - pad)
+  y = (-qy - pad) 
+  rawW = qx - px
+  rawH = qy - py
+  w = rawW + 2 * pad
+  h = rawH + 2 * pad
+  ((px, py),(qx, qy)) = bounds ls 
+  pad = max 1 (0.05 * max rawW rawH)
 
 -- Put it all together: the SVG picture of generation n.
 
 render :: LSystem -> Int -> String
-render system order = expand system order (.) parse angle system (.) draw (.) toSVG
+render system order = toSVG (draw (parse (angle system) (expand system order)))
 
 -- ------------------------------------------------------------
 -- The gallery (provided)
