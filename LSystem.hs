@@ -21,7 +21,7 @@
 module LSystem where
 
 import Control.Exception (SomeException, evaluate, try)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, elemIndex, elemIndices)
 import Text.Printf (printf)
 
 -- ------------------------------------------------------------
@@ -102,7 +102,45 @@ data Instr
 -- parseBlock) means nothing to the turtle: return Nothing.
 
 symbol :: Double -> Char -> Maybe Instr
-symbol = undefined
+symbol angle char | char == 'F' || char == 'G' = Just Draw
+                | char == 'f' = Just Move
+                | char == '+' = Just (Turn angle)
+                | char == '-' = Just (Turn (-angle))
+                | char == '|' = Just (Turn 180)
+                | otherwise = Nothing
+
+-- Get index of last occurence of element in list
+--lastIndex :: a -> [a] -> Maybe Int
+--lastIndex elem [] = Nothing
+--lastIndex elem (x:xs) | x /= elem = 1 + lastIndex elem xs
+--                      | x == elem = 
+
+
+-- Source - https://stackoverflow.com/a/4940615
+-- Posted by ephemient, modified by community. See post 'Timeline' for change history
+-- Retrieved 2026-11-08, License - CC BY-SA 3.0
+
+fromJust :: Maybe a -> a
+fromJust Nothing = error "Maybe.fromJust: Nothing"
+fromJust (Just x) = x
+
+takeUntilLastInstance :: Eq a => a -> [a] -> [a]
+takeUntilLastInstance _ [] = []
+takeUntilLastInstance elem elements = take (last (elemIndices elem elements)) elements
+
+-- Assumes the open bracket is removed from start of list
+findNextCloseBracketIndex :: Eq a => a -> a -> [a] -> [a] -> Maybe Int
+findNextCloseBracketIndex _ _ [] _ = Nothing
+findNextCloseBracketIndex openBracket closeBracket (x:xs) stack | x == openBracket = fmap (+1) (findNextCloseBracketIndex openBracket closeBracket xs (openBracket : stack))
+                                                                | x == closeBracket && (null stack) == True = Just 0
+                                                                | x == closeBracket && (null stack) == False = fmap (+1) (findNextCloseBracketIndex openBracket closeBracket xs (drop 1 stack))
+                                                                | otherwise = fmap (+1) (findNextCloseBracketIndex openBracket closeBracket xs stack)
+
+takeUntilNextPair :: String -> String
+takeUntilNextPair symbols = take (fromJust (findNextCloseBracketIndex '[' ']' symbols [])) symbols
+
+dropUpToNextPair :: String -> String
+dropUpToNextPair symbols = drop ((fromJust (findNextCloseBracketIndex '[' ']' symbols []))+1) symbols
 
 -- Read instructions up to the first unmatched ']' (or the end of the
 -- string).  Return the instructions read, and what is left of the
@@ -112,7 +150,13 @@ symbol = undefined
 --   parseBlock 90 "F+F]G-X"  ==  ([Draw, Turn 90, Draw], "G-X")
 
 parseBlock :: Double -> String -> ([Instr], String)
-parseBlock = undefined
+parseBlock angle "" = ([], "")
+parseBlock angle symbols@(x:xs) | odd (length (elemIndices '[' symbols) + length (elemIndices ']' symbols)) == True = (fst (parseBlock angle (takeUntilLastInstance ']' symbols)), drop ((last (elemIndices ']' symbols))+1) symbols) 
+                        | x == '[' = ((Branch (fst (parseBlock angle (takeUntilNextPair xs)))) : (fst (parseBlock angle (dropUpToNextPair xs))), "")
+                        | otherwise = (case symbol angle x of
+                            Just instr -> instr : fst (parseBlock angle xs)
+                            Nothing    -> fst (parseBlock angle xs), "")
+
 
 -- Turn a whole string into a turtle program.  (You may assume the
 -- brackets in the string are balanced.)
@@ -120,7 +164,8 @@ parseBlock = undefined
 --   parse 90 "F[+F]F"  ==  [Draw, Branch [Turn 90, Draw], Draw]
 
 parse :: Double -> String -> [Instr]
-parse = undefined
+parse angle "" = []
+parse angle symbols = fst (parseBlock angle symbols)
 
 -- How many lines will this program draw?  (Count the Draws, including
 -- the ones inside branches.)
